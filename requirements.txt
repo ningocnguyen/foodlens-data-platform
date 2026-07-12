@@ -1,0 +1,8 @@
+requests
+python-dotenv
+pyspark
+pyarrow
+pandas
+pytest
+ruff
+streamlit
