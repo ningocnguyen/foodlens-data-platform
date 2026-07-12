@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Local environment
+.env
+.venv/
+venv/
+
+# Generated pipeline outputs
+data/bronze/*
+data/silver/*
+data/gold/*
+data/quarantine/*
+reports/*
+
+# Preserve empty folders
+!data/bronze/.gitkeep
+!data/silver/.gitkeep
+!data/gold/.gitkeep
+!data/quarantine/.gitkeep
+!reports/.gitkeep
+
+# Spark
+spark-warehouse/
+metastore_db/
+derby.log
+*.crc
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
