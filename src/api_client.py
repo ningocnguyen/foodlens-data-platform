@@ -1,4 +1,4 @@
-"""Open Food Facts API client."""
+"""Open Food Facts API client"""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class OpenFoodFactsClient:
-    """Retrieve food products from Open Food Facts."""
+    """Retrieve food products from Open Food Facts"""
 
     def __init__(
         self,
@@ -39,7 +39,7 @@ class OpenFoodFactsClient:
         page: int,
         page_size: int,
     ) -> list[dict[str, Any]]:
-        """Retrieve one page of product records."""
+        """Retrieve one page of product records"""
 
         url = f"{self.base_url}/api/v2/search"
 

@@ -1,4 +1,4 @@
-"""Extract Open Food Facts records into the Bronze layer."""
+"""Extract Open Food Facts records into the Bronze layer"""
 
 from __future__ import annotations
 
@@ -26,13 +26,13 @@ class ExtractionResult:
 
 
 def create_run_id() -> str:
-    """Create a unique UTC pipeline-run identifier."""
+    """Create a unique UTC pipeline-run identifier"""
 
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
 def extract_products(settings: Settings) -> ExtractionResult:
-    """Extract API records and preserve them as Bronze JSON."""
+    """Extract API records and preserve them as Bronze JSON"""
 
     started_at = datetime.now(timezone.utc)
     run_id = create_run_id()

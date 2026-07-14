@@ -1,4 +1,4 @@
-"""Central configuration for the FoodLens pipeline."""
+"""Central configuration for the FoodLens pipeline"""
 
 from dataclasses import dataclass
 import os
