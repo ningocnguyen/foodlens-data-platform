@@ -1,0 +1,64 @@
+name: FoodLens Daily Pipeline
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  run-pipeline:
+    name: Run FoodLens pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      OPEN_FOOD_FACTS_BASE_URL: https://world.openfoodfacts.org
+      OPEN_FOOD_FACTS_CATEGORY: chocolates
+      OPEN_FOOD_FACTS_PAGE_SIZE: "10"
+      OPEN_FOOD_FACTS_MAX_PAGES: "1"
+      FOODLENS_USER_AGENT: "FoodLensDataPlatform/1.0 (ngocni.080805@gmail.com)"
+
+      BRONZE_ROOT: data/bronze
+      SILVER_ROOT: data/silver
+      GOLD_ROOT: data/gold
+      QUARANTINE_ROOT: data/quarantine
+      REPORT_ROOT: reports
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run FoodLens pipeline
+        run: python run_pipeline.py
+
+      - name: Upload pipeline outputs
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: foodlens-pipeline-${{ github.run_number }}
+          path: |
+            data/bronze/
+            data/silver/
+            data/gold/
+            data/quarantine/
+            reports/
+          if-no-files-found: error
+          retention-days: 30
