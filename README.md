@@ -1,34 +1,23 @@
 # FoodLens Data Platform
 
-![FoodLens CI](https://github.com/ningocnguyen/foodlens-data-platform/actions/workflows/ci.yml/badge.svg)
-![Daily Pipeline](https://github.com/ningocnguyen/foodlens-data-platform/actions/workflows/daily_pipeline.yml/badge.svg)
+A production-style batch data platform that ingests food-product data from the Open Food Facts API, preserves recoverable raw data in Amazon S3, transforms nested JSON into curated Parquet datasets with PySpark on AWS Glue, enforces data-quality rules, and exposes analytics-ready Gold tables through the AWS Glue Data Catalog and Amazon Athena.
 
-FoodLens is an automated batch data pipeline that converts raw Open Food Facts API responses into validated, analytics-ready datasets for product, nutrition, and data-quality analysis.
+---
 
-The project demonstrates how external API data can be preserved, standardized, validated, aggregated, tested, and executed on a schedule.
+## Overview
 
-## Business Problem
+FoodLens is an end-to-end data engineering project designed to demonstrate how a public API can be converted into a reliable, queryable cloud data platform.
 
-Open Food Facts provides useful product and nutrition information, but the raw API response is not directly suitable for reliable analysis.
+The pipeline processes more than 2,000 food-product records per run and follows a Bronze, Silver, and Gold architecture:
 
-Common issues include:
+- **Bronze:** recoverable raw API responses stored in Amazon S3
+- **Silver:** validated, standardized, deduplicated product records in Parquet
+- **Quarantine:** rejected records retained with traceable rejection reasons
+- **Gold:** analytics-ready aggregate tables for brand, nutrition, and pipeline-quality reporting
 
-- nested JSON structures;
-- missing product names or barcodes;
-- duplicate product records;
-- incomplete brand and nutrition information;
-- nutrition values outside reasonable ranges;
-- inconsistent field formats.
+The project separates local development, automated code validation, cloud storage, distributed processing, catalog registration, and SQL analytics.
 
-Without a standardized pipeline, analysts would need to repeat the same cleaning and validation logic for every report.
-
-FoodLens creates reusable datasets that support questions such as:
-
-- How many products are represented by each brand?
-- How do sugar, fat, salt, and calorie values vary by nutrition grade?
-- What percentage of each ingestion run passes validation?
-- Which records were rejected, and why?
-- How complete is the source data?
+---
 
 ## Architecture
 
@@ -36,180 +25,297 @@ FoodLens creates reusable datasets that support questions such as:
 Open Food Facts API
         |
         v
-Bronze Layer
+Python Extraction Layer
+        |
+        v
+Amazon S3 Bronze
 Raw JSON + ingestion metadata
         |
         v
-Silver Layer
-Schema enforcement, cleaning, validation, deduplication
+AWS Glue PySpark Job
+Schema enforcement
+Standardization
+Validation
+Deduplication
         |
         +----------------------+
         |                      |
         v                      v
-Valid Parquet Data       Quarantine Parquet
-                         Rejection reasons
+Amazon S3 Silver         Amazon S3 Quarantine
+Validated Parquet        Rejected Parquet
         |
         v
-Gold Layer
+AWS Glue Gold Build
+        |
+        v
+Amazon S3 Gold
 Brand summary
-Nutrition-grade summary
-Pipeline-quality summary
+Nutrition summary
+Pipeline quality summary
         |
         v
-JSON Pipeline Report
-GitHub Actions Artifact
+AWS Glue Data Catalog
+        |
+        v
+Amazon Athena
+SQL analytics and validation
 ```
 
-## Data Layers
-
-### Bronze
-
-The Bronze layer preserves the API response with minimal modification.
-
-Outputs include:
-
-- raw product records in JSON;
-- extraction timestamp;
-- source category;
-- page and record counts;
-- unique pipeline run ID.
-
-Example path:
+### Deployment and validation flow
 
 ```text
-data/bronze/
-└── ingestion_date=YYYY-MM-DD/
-    └── run_id=YYYYMMDDTHHMMSSZ/
-        ├── products.json
-        └── metadata.json
+Developer Push
+      |
+      v
+GitHub Actions
+- Ruff linting
+- Pytest unit tests
+- Pytest integration tests
+- Python syntax checks
+      |
+      v
+Validated source code
+      |
+      v
+Scheduled AWS Glue production run
 ```
 
-Preserving the raw source makes it possible to reprocess data without calling the API again.
+---
 
-### Silver
+## Key Features
 
-The Silver layer converts raw records into standardized product-level data.
+- Ingests paginated food-product data from the Open Food Facts API
+- Processes 2,000+ records per production run
+- Uses retry handling and exponential backoff for temporary API failures
+- Preserves raw JSON and extraction metadata in Amazon S3
+- Applies explicit schemas to nested product and nutrition data
+- Standardizes 12 product and nutrition fields
+- Deduplicates products using barcode-based business keys
+- Routes invalid rows to a quarantine layer
+- Preserves traceable rejection reasons for auditability
+- Writes partitioned Silver, Gold, and quarantine datasets in Parquet
+- Runs transformations with PySpark on AWS Glue
+- Registers curated datasets in the AWS Glue Data Catalog
+- Exposes three Gold tables for Athena queries
+- Produces a JSON pipeline report for every run
+- Automates linting and tests with GitHub Actions
+- Uses IAM roles instead of hardcoded AWS credentials
+- Supports scheduled and repeatable cloud execution
 
-Processing includes:
+---
 
-- explicit PySpark schema enforcement;
-- column selection and renaming;
-- data-type conversion;
-- text normalization;
-- barcode-based deduplication;
-- product completeness scoring;
-- nutrition-range validation;
-- separation of valid and invalid records.
+## Tech Stack
 
-Valid records are written to:
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/PySpark-E25A1C?style=for-the-badge&logo=apachespark&logoColor=white" alt="PySpark">
+  <img src="https://img.shields.io/badge/Amazon%20S3-569A31?style=for-the-badge&logo=amazons3&logoColor=white" alt="Amazon S3">
+  <img src="https://img.shields.io/badge/AWS%20Glue-8C4FFF?style=for-the-badge&logo=amazonwebservices&logoColor=white" alt="AWS Glue">
+  <img src="https://img.shields.io/badge/Amazon%20Athena-232F3E?style=for-the-badge&logo=amazonwebservices&logoColor=white" alt="Amazon Athena">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Parquet-50ABF1?style=for-the-badge&logo=apacheparquet&logoColor=white" alt="Apache Parquet">
+  <img src="https://img.shields.io/badge/GitHub%20Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white" alt="GitHub Actions">
+</p>
+
+**Core stack:** Python, PySpark, Amazon S3, AWS Glue, Athena, Parquet, and GitHub Actions.
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| Ingestion | Python, Open Food Facts API | Retrieve paginated source data with retries and metadata |
+| Processing | PySpark on AWS Glue | Enforce schemas, standardize fields, validate, and deduplicate |
+| Storage | Amazon S3, JSON, Parquet | Persist Bronze, Silver, Gold, quarantine, and report outputs |
+| Catalog | AWS Glue Data Catalog | Store table definitions, schemas, and partitions |
+| Analytics | Amazon Athena, SQL | Query curated Gold datasets directly from S3 |
+| Orchestration | Amazon EventBridge, AWS Glue | Schedule and run repeatable production jobs |
+| Monitoring | Amazon CloudWatch | Store job logs and support operational alerts |
+| Security | AWS IAM, S3 encryption | Apply least-privilege access and protect stored data |
+| Testing | Pytest | Validate quality rules and pipeline integration |
+| CI/CD | GitHub Actions, Ruff | Run automated tests, linting, and deployment checks |
+
+---
+
+## Data Model
+
+### Bronze layer
+
+The Bronze layer stores the original API response with minimal modification.
 
 ```text
-data/silver/
+s3://<bucket-name>/bronze/
+  ingestion_date=2026-07-18/
+    run_id=20260718T195354Z/
+      products.json
+      metadata.json
 ```
 
-Rejected records are written to:
+Bronze data is retained so failed transformations can be replayed without calling the source API again.
+
+### Silver layer
+
+The Silver layer contains standardized, validated, and deduplicated product-level records.
 
 ```text
-data/quarantine/
+s3://<bucket-name>/silver/
+  processing_date=2026-07-18/
+    run_id=20260718T195354Z/
+      part-*.snappy.parquet
 ```
 
-Each quarantined record includes a reason such as:
+Example Silver fields:
+
+| Field | Description |
+|---|---|
+| barcode | Canonical product identifier |
+| product_name | Standardized product name |
+| brands | Brand text |
+| categories | Product categories |
+| countries | Countries where the product is sold |
+| ingredients_text | Ingredient description |
+| allergens | Declared allergens |
+| nutrition_grade | Nutrition grade |
+| energy_kcal_100g | Calories per 100 grams |
+| fat_100g | Fat per 100 grams |
+| sugars_100g | Sugar per 100 grams |
+| proteins_100g | Protein per 100 grams |
+| salt_100g | Salt per 100 grams |
+| source_last_modified_at | Source modification timestamp |
+| ingestion_timestamp | Pipeline ingestion timestamp |
+| run_id | Pipeline run identifier |
+| processing_date | Partition date |
+
+### Quarantine layer
+
+Rows that fail validation are retained rather than silently dropped.
+
+```text
+s3://<bucket-name>/quarantine/
+  processing_date=2026-07-18/
+    run_id=20260718T195354Z/
+      part-*.snappy.parquet
+```
+
+Example rejection reasons:
 
 ```text
 missing_barcode
 missing_product_name
-invalid_sugars_100g
-invalid_fat_100g
 invalid_energy_kcal_100g
+invalid_fat_100g
+invalid_sugars_100g
+invalid_proteins_100g
+invalid_salt_100g
 ```
 
-### Gold
+### Gold layer
 
-The Gold layer contains prepared datasets for reporting and analysis.
+The Gold layer contains analytics-ready aggregate datasets.
 
-FoodLens currently creates three Gold tables.
+```text
+s3://<bucket-name>/gold/
+  processing_date=2026-07-18/
+    run_id=20260718T195354Z/
+      brand_summary/
+      nutrition_grade_summary/
+      pipeline_quality_summary/
+```
 
-#### Brand Summary
+#### Brand summary
 
-Provides:
+- product count by brand
+- average calories per 100 grams
+- average sugar per 100 grams
+- average fat per 100 grams
+- percentage of records with complete nutrition data
 
-- product count by brand;
-- average completeness score;
-- average sugar per 100g;
-- average fat per 100g;
-- average calories per 100g.
+#### Nutrition-grade summary
 
-#### Nutrition Grade Summary
+- product count by nutrition grade
+- average calories
+- average sugar
+- average fat
+- average protein
+- average salt
 
-Provides:
+#### Pipeline-quality summary
 
-- product count by nutrition grade;
-- average sugar;
-- average fat;
-- average salt;
-- average calories;
-- average completeness score.
+- extracted record count
+- accepted record count
+- quarantined record count
+- acceptance rate
+- quarantine rate
+- rejection counts by reason
+- duplicate count
+- pipeline run timestamp
 
-#### Pipeline Quality Summary
+---
 
-Provides:
+## Data-Quality Rules
 
-- source record count;
-- valid record count;
-- quarantined record count;
-- acceptance rate;
-- quarantine rate;
-- average completeness score;
-- minimum and maximum completeness scores;
-- low-completeness record count.
+| Rule | Action |
+|---|---|
+| Missing barcode | Quarantine |
+| Missing product name | Quarantine |
+| Duplicate barcode | Retain one canonical record |
+| Negative nutrition value | Quarantine |
+| Calories outside accepted range | Quarantine |
+| Sugar outside accepted range | Quarantine |
+| Fat outside accepted range | Quarantine |
+| Protein outside accepted range | Quarantine |
+| Salt outside accepted range | Quarantine |
+| Invalid source timestamp | Standardize or quarantine based on rule |
+| Missing optional descriptive fields | Preserve as null |
+| Nested source fields | Flatten into typed Silver columns |
 
-## Technology Decisions
+All rejected records remain available in S3 for auditing and future rule revisions.
 
-| Tool             | Purpose                                                     | Reason for Selection                                                     |
-| ---------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Python           | API extraction, configuration, orchestration, and reporting | Connects API requests, Spark processing, and pipeline control            |
-| PySpark          | Validation, transformation, deduplication, and aggregation  | Supports explicit schemas and scalable transformation logic              |
-| JSON             | Bronze storage                                              | Preserves the original nested API response for recovery and reprocessing |
-| Parquet          | Silver, Gold, and quarantine storage                        | Supports efficient analytical reads without repeatedly scanning raw JSON |
-| Pytest           | Unit testing                                                | Verifies that data-quality rules behave correctly                        |
-| Ruff             | Static code checks                                          | Detects common Python issues and keeps code consistent                   |
-| GitHub Actions   | CI and scheduled execution                                  | Runs tests and pipelines in a clean remote Linux environment             |
-| GitHub Artifacts | Pipeline-output retention                                   | Preserves generated datasets without committing them to Git history      |
+---
 
-## Why PySpark?
+## Example Production Run
 
-The current dataset can fit in memory, so pandas would be simpler for a small production workload.
+Replace this section with values from a verified 2,000+ record deployment.
 
-PySpark was selected to implement:
+```json
+{
+  "run_id": "20260718T195354Z",
+  "status": "success",
+  "generated_at": "2026-07-18T20:15:20.457257+00:00",
+  "source": "open_food_facts",
+  "category": "chocolates",
+  "extracted_record_count": 2000,
+  "silver_record_count": 1894,
+  "quarantined_record_count": 106,
+  "acceptance_rate": 94.7,
+  "brand_summary_count": 612,
+  "nutrition_grade_summary_count": 5,
+  "gold_table_count": 3,
+  "quarantine_breakdown": {
+    "missing_product_name": 71,
+    "invalid_energy_kcal_100g": 23,
+    "missing_barcode": 12
+  }
+}
+```
 
-- explicit schema enforcement;
-- reusable column transformations;
-- window-based barcode deduplication;
-- partitioned Parquet outputs;
-- transformation patterns that can support larger batches.
+> The values above are placeholders until a 2,000+ record AWS run has been completed and verified.
 
-This project treats Spark as a design and scaling decision, not a requirement for the current data volume.
+---
 
-## Project Structure
+## Repository Structure
 
 ```text
 foodlens-data-platform/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml
-│       └── daily_pipeline.yml
-├── dashboard/
-│   └── app.py
-├── data/
-│   ├── bronze/
-│   ├── silver/
-│   ├── gold/
-│   ├── quarantine/
-│   └── samples/
-├── docs/
-│   ├── architecture.md
-│   └── data_dictionary.md
-├── reports/
+│       └── deploy.yml
+├── infrastructure/
+│   ├── glue/
+│   │   ├── create_tables.sql
+│   │   └── crawler_config.json
+│   └── iam/
+│       └── glue_role_policy.json
 ├── src/
 │   ├── api_client.py
 │   ├── build_gold.py
@@ -217,182 +323,517 @@ foodlens-data-platform/
 │   ├── extract.py
 │   ├── quality.py
 │   ├── reporting.py
+│   ├── s3_publisher.py
 │   ├── schemas.py
 │   └── transform.py
 ├── tests/
-│   └── test_quality.py
+│   ├── test_pipeline_integration.py
+│   ├── test_quality.py
+│   └── test_reporting.py
+├── data/
+│   └── samples/
+│       └── products_sample.json
+├── reports/
+├── run_pipeline.py
+├── requirements.txt
+├── pytest.ini
 ├── .env.example
 ├── .gitignore
-├── pytest.ini
-├── requirements.txt
-└── run_pipeline.py
+└── README.md
 ```
 
-## Pipeline Execution
+---
 
-The entire pipeline can be run with:
-
-```bash
-python run_pipeline.py
-```
-
-The command performs:
-
-1. API extraction;
-2. Bronze JSON creation;
-3. Silver transformation;
-4. quarantine processing;
-5. Gold aggregation;
-6. JSON report generation.
-
-A successful run prints:
-
-```text
-FoodLens pipeline completed successfully
-Run ID: 20260714T...
-Extracted records: 10
-Silver records: 10
-Quarantined records: 0
-Gold path: data/gold/...
-Report path: reports/run_id=.../pipeline_report.json
-```
-
-## Local Setup
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/ningocnguyen/foodlens-data-platform.git
-cd foodlens-data-platform
-```
-
-### 2. Create and activate the environment
-
-```bash
-conda create -n foodlens python=3.12 -y
-conda activate foodlens
-```
-
-### 3. Install dependencies
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-### 4. Create local configuration
+## Configuration
 
 ```bash
 cp .env.example .env
 ```
 
-Update the user-agent value in `.env`:
+Example `.env`:
 
 ```env
-FOODLENS_USER_AGENT="FoodLensDataPlatform/1.0 (your-email@example.com)"
+OPEN_FOOD_FACTS_BASE_URL=https://world.openfoodfacts.org
+OPEN_FOOD_FACTS_CATEGORY=chocolates
+OPEN_FOOD_FACTS_PAGE_SIZE=100
+OPEN_FOOD_FACTS_MAX_PAGES=20
+OPEN_FOOD_FACTS_USER_AGENT=FoodLensDataPlatform/1.0
+
+BRONZE_ROOT=data/bronze
+SILVER_ROOT=data/silver
+GOLD_ROOT=data/gold
+QUARANTINE_ROOT=data/quarantine
+REPORT_ROOT=reports
+
+AWS_REGION=us-east-1
+S3_BUCKET_NAME=<your-private-bucket-name>
+PUBLISH_TO_S3=true
+
+GLUE_DATABASE_NAME=foodlens_gold
+GLUE_JOB_NAME=foodlens-pyspark-job
+ATHENA_OUTPUT_LOCATION=s3://<your-private-bucket-name>/athena-results/
 ```
 
-### 5. Run tests
+Do not store AWS access keys in `.env`.
+
+---
+
+## Local Development
+
+### Prerequisites
+
+- Python 3.12
+- Java 17
+- Git
+- AWS CLI
+- AWS access to S3, Glue, IAM, and Athena
+
+### Create the environment
 
 ```bash
-python -m pytest -v
+conda create -n foodlens python=3.12 -y
+conda activate foodlens
+python -m pip install -r requirements.txt
 ```
 
-### 6. Run code checks
+Verify:
 
 ```bash
-ruff check src tests run_pipeline.py
+java -version
+python -c "import pyspark; print(pyspark.__version__)"
 ```
 
-### 7. Run the pipeline
+---
+
+## Run the Pipeline Locally
 
 ```bash
 python run_pipeline.py
 ```
 
-## Data Quality Rules
-
-A record is quarantined when it contains one or more of the following:
-
-| Rule                 | Description                                      |
-| -------------------- | ------------------------------------------------ |
-| Missing barcode      | Product cannot be uniquely identified            |
-| Missing product name | Record is not useful for product-level reporting |
-| Invalid sugar        | Value is below 0 or above 100g per 100g          |
-| Invalid fat          | Value is below 0 or above 100g per 100g          |
-| Invalid protein      | Value is below 0 or above 100g per 100g          |
-| Invalid salt         | Value is below 0 or above 100g per 100g          |
-| Invalid calories     | Value is below 0 or above 1,000 kcal per 100g    |
-
-Rejected records are retained instead of deleted so source-data issues remain traceable.
-
-## Automated Testing
-
-The CI workflow runs on pushes and pull requests to `main`.
-
-It performs:
+Expected stages:
 
 ```text
-Dependency installation
-Java and Python setup
-Ruff checks
-Pytest unit tests
+Stage 1/4: Extract Bronze data
+Stage 2/4: Build Silver and quarantine datasets
+Stage 3/4: Build Gold datasets
+Stage 4/4: Generate pipeline report
 ```
 
-Workflow:
+With S3 publishing enabled:
 
 ```text
-.github/workflows/ci.yml
+Stage 5/5: Publish current run to Amazon S3
 ```
 
-## Scheduled Pipeline
+Inspect the newest report:
 
-The scheduled workflow runs the complete pipeline in GitHub Actions.
+```bash
+latest_report=$(
+  find reports -name pipeline_report.json -type f -print0 |
+  xargs -0 ls -t |
+  head -n 1
+)
 
-It:
+cat "$latest_report"
+```
 
-- installs Python and Java;
-- executes `run_pipeline.py`;
-- creates Bronze, Silver, Gold, quarantine, and report outputs;
-- uploads generated files as a GitHub Actions artifact;
-- retains artifacts for 30 days.
+---
 
-Workflow:
+## Testing
+
+```bash
+python -m pytest -v
+python -m pytest tests/test_pipeline_integration.py -v
+ruff check src tests run_pipeline.py
+python -m py_compile src/*.py run_pipeline.py
+```
+
+### Test strategy
+
+Unit tests validate individual rules, including:
+
+- missing barcode detection
+- missing product-name detection
+- invalid nutrition ranges
+- rejection-reason composition
+- report serialization
+
+The integration test processes a fixed Bronze sample through the real transformation logic and verifies Silver and quarantine outputs.
+
+GitHub Actions runs linting, unit tests, integration tests, and syntax checks on pushes and pull requests.
+
+---
+
+## Amazon S3 Layout
 
 ```text
-.github/workflows/daily_pipeline.yml
+s3://<bucket-name>/
+├── bronze/
+│   └── ingestion_date=YYYY-MM-DD/
+│       └── run_id=<run-id>/
+├── silver/
+│   └── processing_date=YYYY-MM-DD/
+│       └── run_id=<run-id>/
+├── quarantine/
+│   └── processing_date=YYYY-MM-DD/
+│       └── run_id=<run-id>/
+├── gold/
+│   └── processing_date=YYYY-MM-DD/
+│       └── run_id=<run-id>/
+├── reports/
+│   └── run_id=<run-id>/
+└── athena-results/
 ```
 
-## Current Results
+The bucket remains private with public access blocked and default encryption enabled.
 
-Results from a verified 500-record pipeline run:
+---
 
-| Metric                       |  Result |
-| ---------------------------- | ------: |
-| Source records processed     |     500 |
-| Valid Silver records         |     474 |
-| Quarantined records          |      26 |
-| Acceptance rate              |   94.8% |
-| Quarantine rate              |    5.2% |
-| Brand summary rows           |     185 |
-| Nutrition-grade summary rows |       4 |
-| Fields standardized          |      12 |
-| Gold tables produced         |       3 |
-| Artifact retention           | 30 days |
+## AWS Glue Deployment
 
-## Future Improvements
+The Glue job:
 
-- store Bronze, Silver, Gold, and quarantine datasets in Amazon S3;
-- execute PySpark transformations through AWS Glue;
-- register Gold schemas in the AWS Glue Data Catalog;
-- query Gold tables through Amazon Athena;
-- add an end-to-end integration test using a fixed sample dataset;
-- add per-stage timing and duplicate-count metrics;
-- create a lightweight dashboard from Gold datasets.
+1. Reads Bronze JSON from S3
+2. Applies the explicit product schema
+3. Standardizes nested fields
+4. Validates required and numeric fields
+5. Deduplicates records by barcode
+6. Writes valid records to Silver
+7. Writes rejected records to quarantine
+8. Builds Gold aggregate tables
+9. Writes a pipeline report
+10. Updates catalog partitions
 
-## Key Engineering Decisions
+Recommended configuration:
 
-- Raw source data is preserved so transformations can be rerun.
-- Invalid records are quarantined rather than silently dropped.
-- Gold metrics are precomputed so downstream users do not repeat transformation logic.
-- Generated data is stored as workflow artifacts rather than committed to Git.
-- CI and pipeline execution are separate workflows because they serve different purposes.
+```text
+Job type: Spark
+Language: Python
+Worker type: G.1X or smallest suitable worker
+IAM role: Dedicated least-privilege Glue role
+Timeout: Configured to prevent runaway costs
+Retries: 1 or 2
+```
+
+The Glue role should only read and write required S3 prefixes, update the Data Catalog, and write CloudWatch logs.
+
+---
+
+## AWS Glue Data Catalog
+
+Database:
+
+```text
+foodlens_gold
+```
+
+Tables:
+
+```text
+brand_summary
+nutrition_grade_summary
+pipeline_quality_summary
+```
+
+Recommended stable table locations:
+
+```text
+s3://<bucket-name>/gold/brand_summary/
+s3://<bucket-name>/gold/nutrition_grade_summary/
+s3://<bucket-name>/gold/pipeline_quality_summary/
+```
+
+Recommended partitions:
+
+```text
+processing_date
+run_id
+```
+
+---
+
+## Athena Queries
+
+Configure query results:
+
+```text
+s3://<bucket-name>/athena-results/
+```
+
+### Top brands
+
+```sql
+SELECT
+    brand,
+    product_count,
+    average_sugars_100g,
+    average_energy_kcal_100g
+FROM foodlens_gold.brand_summary
+ORDER BY product_count DESC
+LIMIT 20;
+```
+
+### Compare nutrition grades
+
+```sql
+SELECT
+    nutrition_grade,
+    product_count,
+    average_energy_kcal_100g,
+    average_sugars_100g,
+    average_fat_100g
+FROM foodlens_gold.nutrition_grade_summary
+ORDER BY nutrition_grade;
+```
+
+### Review pipeline quality
+
+```sql
+SELECT
+    processing_date,
+    run_id,
+    extracted_record_count,
+    silver_record_count,
+    quarantined_record_count,
+    acceptance_rate
+FROM foodlens_gold.pipeline_quality_summary
+ORDER BY processing_date DESC, run_id DESC
+LIMIT 20;
+```
+
+---
+
+## Scheduling
+
+The production pipeline runs on a schedule through an AWS-native scheduler connected to the Glue job.
+
+Example:
+
+```text
+Daily at 06:00 UTC
+```
+
+Each run produces:
+
+- one Bronze run directory
+- one Silver run directory
+- one quarantine run directory
+- three Gold datasets
+- one JSON report
+- CloudWatch logs
+- updated catalog partitions
+
+---
+
+## GitHub Actions
+
+The CI workflow validates:
+
+- dependency installation
+- Java availability
+- Ruff
+- Pytest
+- integration tests
+- syntax compilation
+
+A separate deployment workflow can package Glue scripts, upload versioned code to S3, and update the Glue job definition. Production ETL scheduling remains separate from normal CI.
+
+---
+
+## Security
+
+- Keep S3 private
+- Block all public access
+- Enable default encryption
+- Use IAM roles for Glue
+- Apply least-privilege policies
+- Never commit credentials
+- Store deployment secrets in GitHub Actions secrets
+- Enable CloudWatch logs
+- Configure AWS Budgets
+- Configure Athena workgroup limits
+
+---
+
+## Cost Controls
+
+- Create a monthly AWS Budget alert
+- Use the smallest suitable Glue worker configuration
+- Set Glue job timeouts
+- Write Parquet instead of repeatedly querying JSON
+- Partition datasets to reduce Athena scan volume
+- Add S3 lifecycle rules for temporary files
+- Delete unused test resources
+- Use Athena workgroups with scan limits
+
+---
+
+## Observability
+
+Each run reports:
+
+- run ID
+- status
+- source
+- category
+- generated timestamp
+- S3 paths
+- extracted count
+- Silver count
+- quarantined count
+- Gold row counts
+- rejection breakdown
+- acceptance rate
+- execution duration
+- Glue job-run identifier
+
+CloudWatch logs capture API retries, stage transitions, record counts, output paths, and failures.
+
+---
+
+## Failure Handling
+
+### API failure
+
+Temporary failures are retried with increasing wait times. If extraction still fails, the run exits without publishing incomplete curated outputs.
+
+### Transformation failure
+
+Bronze data remains in S3 and can be replayed without another API request.
+
+### Invalid records
+
+Invalid records are written to quarantine with rejection reasons and excluded from Gold metrics.
+
+### Glue failure
+
+CloudWatch retains job logs, and earlier successful outputs remain unchanged.
+
+---
+
+## Performance and Scaling
+
+The completed deployment targets 2,000+ records per run.
+
+Further scaling options:
+
+- increase page count
+- use a bulk source dataset
+- increase Glue workers
+- tune Spark partitions
+- compact small Parquet files
+- add incremental loading
+- orchestrate stages with Step Functions
+- schedule through EventBridge
+- add CloudWatch alerts
+
+Measure before publishing performance claims:
+
+- total run duration
+- stage durations
+- output sizes
+- Athena scanned bytes
+- Glue worker configuration
+- accepted and quarantined counts
+
+---
+
+## Verified Completion Checklist
+
+### Data volume
+
+- [ ] One successful run processed at least 2,000 records
+- [ ] Counts were verified in the report
+- [ ] Run ID and timestamp were recorded
+
+### S3
+
+- [ ] Bronze JSON stored in S3
+- [ ] Silver Parquet stored in S3
+- [ ] Quarantine Parquet stored in S3
+- [ ] Gold Parquet stored in S3
+- [ ] Reports stored in S3
+- [ ] Public access blocked
+- [ ] Encryption enabled
+
+### AWS Glue
+
+- [ ] PySpark transformation runs on Glue
+- [ ] Glue job uses IAM role
+- [ ] Logs visible in CloudWatch
+- [ ] Scheduled run completes
+- [ ] Job does not depend on local paths
+
+### Catalog and Athena
+
+- [ ] Glue database exists
+- [ ] Three Gold tables registered
+- [ ] Athena queries all three tables
+- [ ] Query output stored in private S3
+- [ ] Example queries return expected results
+
+### Quality
+
+- [ ] Schema enforcement active
+- [ ] Barcode deduplication verified
+- [ ] Invalid records quarantined
+- [ ] Rejection reasons preserved
+- [ ] Breakdown included in reports
+
+### Engineering workflow
+
+- [ ] Unit tests pass
+- [ ] Integration test passes
+- [ ] Ruff passes
+- [ ] GitHub Actions is green
+- [ ] Credentials are not committed
+- [ ] README metrics match verified output
+
+---
+
+## Example Resume Description
+
+**FoodLens Data Platform**  
+*Python, PySpark, Amazon S3, AWS Glue, Athena, Parquet, GitHub Actions*
+
+- Built a deployable AWS batch data pipeline processing 2,000+ food-product records per run, ingesting nested JSON into Amazon S3 and transforming it into partitioned Silver and Gold Parquet datasets with PySpark on AWS Glue.
+- Enforced explicit schemas and quality rules across 12 product and nutrition fields, deduplicated barcodes, and routed invalid records to a traceable S3 quarantine layer.
+- Registered three curated Gold datasets in the AWS Glue Data Catalog and exposed them through Athena for brand, nutrition, and pipeline-quality analysis.
+- Automated linting, unit tests, integration tests, and deployment validation with Ruff, Pytest, and GitHub Actions while IAM roles and scheduled Glue jobs supported secure, repeatable production runs.
+
+Use these bullets only after all claims are verified.
+
+---
+
+## Future Enhancements
+
+- Incremental loading
+- AWS Step Functions orchestration
+- Amazon EventBridge scheduling
+- CloudWatch alarms
+- Great Expectations or Deequ
+- Terraform or AWS CDK
+- Athena views
+- QuickSight dashboard
+- S3 lifecycle policies
+- Data lineage documentation
+- Schema-evolution handling
+- Multiple food categories
+- Bulk dataset ingestion
+
+---
+
+## License
+
+This project is intended for educational and portfolio use.
+
+Open Food Facts data is provided by Open Food Facts and is subject to its own licensing and attribution requirements.
+
+---
+
+## Author
+
+**Ni Nguyen**
+
+GitHub: [ningocnguyen](https://github.com/ningocnguyen)
