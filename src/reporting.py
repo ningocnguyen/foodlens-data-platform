@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 
+from pyspark.sql import SparkSession
+
 from src.build_gold import GoldBuildResult
 from src.extract import ExtractionResult
 from src.transform import TransformationResult
@@ -30,9 +32,39 @@ class PipelineReport:
     quarantined_record_count: int
     brand_summary_count: int
     nutrition_grade_summary_count: int
+    quarantine_breakdown: dict[str, int]
+
+
+def get_quarantine_breakdown(
+    spark: SparkSession,
+    quarantine_path: Path,
+    quarantined_count: int,
+) -> dict[str, int]:
+    """Count quarantined rows by rejection reason"""
+
+    if quarantined_count == 0:
+        return {}
+
+    quarantine_df = spark.read.parquet(
+        str(quarantine_path)
+    )
+
+    rows = (
+        quarantine_df.groupBy(
+            "rejection_reason"
+        )
+        .count()
+        .collect()
+    )
+
+    return {
+        row["rejection_reason"]: row["count"]
+        for row in rows
+    }
 
 
 def create_pipeline_report(
+    spark: SparkSession,
     extraction_result: ExtractionResult,
     transformation_result: TransformationResult,
     gold_result: GoldBuildResult,
@@ -41,10 +73,20 @@ def create_pipeline_report(
 ) -> Path:
     """Write one pipeline report as formatted JSON"""
 
+    quarantine_breakdown = get_quarantine_breakdown(
+        spark=spark,
+        quarantine_path=transformation_result.quarantine_path,
+        quarantined_count=(
+            transformation_result.quarantined_count
+        ),
+    )
+
     report = PipelineReport(
         run_id=extraction_result.run_id,
         status="success",
-        generated_at=datetime.now(timezone.utc).isoformat(),
+        generated_at=datetime.now(
+            timezone.utc
+        ).isoformat(),
         source="open_food_facts",
         category=category,
         bronze_product_path=str(
@@ -74,6 +116,7 @@ def create_pipeline_report(
         nutrition_grade_summary_count=(
             gold_result.nutrition_grade_summary_count
         ),
+        quarantine_breakdown=quarantine_breakdown,
     )
 
     report_directory = (

@@ -122,14 +122,13 @@ def main() -> int:
         )
 
         report_path = create_pipeline_report(
-            extraction_result=extraction_result,
-            transformation_result=(
-                transformation_result
-            ),
-            gold_result=gold_result,
-            category=settings.category,
-            report_root=settings.report_root,
-        )
+          spark=spark,
+          extraction_result=extraction_result,
+          transformation_result=transformation_result,
+          gold_result=gold_result,
+          category=settings.category,
+          report_root=settings.report_root,
+        )     
 
         logger.info(
             "Pipeline report created: %s",
