@@ -641,34 +641,6 @@ A separate deployment workflow can package Glue scripts, upload versioned code t
 
 ---
 
-## Security
-
-- Keep S3 private
-- Block all public access
-- Enable default encryption
-- Use IAM roles for Glue
-- Apply least-privilege policies
-- Never commit credentials
-- Store deployment secrets in GitHub Actions secrets
-- Enable CloudWatch logs
-- Configure AWS Budgets
-- Configure Athena workgroup limits
-
----
-
-## Cost Controls
-
-- Create a monthly AWS Budget alert
-- Use the smallest suitable Glue worker configuration
-- Set Glue job timeouts
-- Write Parquet instead of repeatedly querying JSON
-- Partition datasets to reduce Athena scan volume
-- Add S3 lifecycle rules for temporary files
-- Delete unused test resources
-- Use Athena workgroups with scan limits
-
----
-
 ## Observability
 
 Each run reports:
