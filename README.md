@@ -364,14 +364,20 @@ Workflow:
 
 ## Current Results
 
-| Metric                   |  Result |
-| ------------------------ | ------: |
-| Source records processed |      10 |
-| Fields standardized      |      12 |
-| Gold tables produced     |       3 |
-| Automated quality tests  |       4 |
-| Output groups retained   |       5 |
-| Artifact retention       | 30 days |
+Results from a verified 500-record pipeline run:
+
+| Metric                       |  Result |
+| ---------------------------- | ------: |
+| Source records processed     |     500 |
+| Valid Silver records         |     474 |
+| Quarantined records          |      26 |
+| Acceptance rate              |   94.8% |
+| Quarantine rate              |    5.2% |
+| Brand summary rows           |     185 |
+| Nutrition-grade summary rows |       4 |
+| Fields standardized          |      12 |
+| Gold tables produced         |       3 |
+| Artifact retention           | 30 days |
 
 ## Future Improvements
 
