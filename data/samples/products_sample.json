@@ -1,0 +1,59 @@
+[
+  {
+    "_id": "1111111111111",
+    "code": "1111111111111",
+    "product_name": "Dark Chocolate",
+    "brands": "FoodLens Test Brand",
+    "categories": "Chocolate",
+    "countries": "United States",
+    "ingredients_text": "Cocoa, sugar",
+    "allergens": "",
+    "nutrition_grades": "c",
+    "last_modified_t": 1750000000,
+    "nutriments": {
+      "energy-kcal_100g": 520.0,
+      "fat_100g": 35.0,
+      "proteins_100g": 6.0,
+      "salt_100g": 0.1,
+      "sugars_100g": 40.0
+    }
+  },
+  {
+    "_id": "2222222222222",
+    "code": "2222222222222",
+    "product_name": "Milk Chocolate",
+    "brands": "FoodLens Test Brand",
+    "categories": "Chocolate",
+    "countries": "United States",
+    "ingredients_text": "Milk, cocoa, sugar",
+    "allergens": "milk",
+    "nutrition_grades": "d",
+    "last_modified_t": 1750000100,
+    "nutriments": {
+      "energy-kcal_100g": 550.0,
+      "fat_100g": 32.0,
+      "proteins_100g": 8.0,
+      "salt_100g": 0.2,
+      "sugars_100g": 52.0
+    }
+  },
+  {
+    "_id": null,
+    "code": null,
+    "product_name": "Invalid Chocolate",
+    "brands": "Unknown",
+    "categories": "Chocolate",
+    "countries": "United States",
+    "ingredients_text": "Sugar",
+    "allergens": "",
+    "nutrition_grades": "e",
+    "last_modified_t": 1750000200,
+    "nutriments": {
+      "energy-kcal_100g": 450.0,
+      "fat_100g": 20.0,
+      "proteins_100g": 3.0,
+      "salt_100g": 0.1,
+      "sugars_100g": 120.0
+    }
+  }
+]
