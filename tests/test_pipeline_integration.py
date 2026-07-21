@@ -45,9 +45,7 @@ def test_bronze_to_silver_and_quarantine(
         report_root=str(tmp_path / "reports"),
     )
 
-    sample_path = Path(
-        "data/samples/products_sample.json"
-    )
+    sample_path = "data/samples/products_sample.json"
 
     result = transform_products(
         spark=spark,

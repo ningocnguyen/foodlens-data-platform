@@ -23,7 +23,7 @@ class Settings:
 
 
 def get_settings() -> Settings:
-    """Load and validate pipeline settings."""
+    """Load and validate pipeline settings"""
 
     user_agent = os.getenv("FOODLENS_USER_AGENT")
 

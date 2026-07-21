@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
+# from pathlib import Path
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
@@ -20,8 +20,8 @@ class TransformationResult:
     """Summary of one Bronze-to-Silver transformation"""
 
     run_id: str
-    silver_path: Path
-    quarantine_path: Path
+    silver_path: str
+    quarantine_path: str
     source_count: int
     valid_count: int
     quarantined_count: int
@@ -42,7 +42,7 @@ def create_spark_session() -> SparkSession:
 
 def read_bronze_products(
     spark: SparkSession,
-    bronze_product_path: Path,
+    bronze_product_path: str,
 ) -> DataFrame:
     """Read Bronze JSON using the explicit product schema"""
 
@@ -50,7 +50,7 @@ def read_bronze_products(
         spark.read
         .schema(PRODUCT_SCHEMA)
         .option("multiLine", True)
-        .json(str(bronze_product_path))
+        .json(bronze_product_path)
     )
 
 
@@ -191,7 +191,7 @@ def deduplicate_products(
 def transform_products(
     spark: SparkSession,
     settings: Settings,
-    bronze_product_path: Path,
+    bronze_product_path: str,
     run_id: str,
 ) -> TransformationResult:
     """Transform raw Bronze products into Silver and Quarantine"""
@@ -233,24 +233,20 @@ def transform_products(
     ).date().isoformat()
 
     silver_path = (
-        Path(settings.silver_root)
-        / f"processing_date={processing_date}"
-        / f"run_id={run_id}"
+        f"{settings.silver_root.rstrip('/')}"
+        f"/processing_date={processing_date}"
+        f"/run_id={run_id}"
     )
 
     quarantine_path = (
-        Path(settings.quarantine_root)
-        / f"processing_date={processing_date}"
-        / f"run_id={run_id}"
+        f"{settings.quarantine_root.rstrip('/')}"
+        f"/processing_date={processing_date}"
+        f"/run_id={run_id}"
     )
 
-    deduplicated_df.write.mode("overwrite").parquet(
-        str(silver_path)
-    )
+    deduplicated_df.write.mode("overwrite").parquet(silver_path)
 
-    quarantine_df.write.mode("overwrite").parquet(
-        str(quarantine_path)
-    )
+    quarantine_df.write.mode("overwrite").parquet(quarantine_path)
 
     return TransformationResult(
         run_id=run_id,

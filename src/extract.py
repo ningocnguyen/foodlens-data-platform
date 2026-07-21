@@ -10,6 +10,8 @@ from pathlib import Path
 import time
 from typing import Any
 
+import boto3
+
 from src.api_client import OpenFoodFactsClient
 from src.config import Settings
 
@@ -20,8 +22,8 @@ logger = logging.getLogger(__name__)
 class ExtractionResult:
     run_id: str
     ingestion_date: str
-    product_path: Path
-    metadata_path: Path
+    product_path: str
+    metadata_path: str
     record_count: int
 
 
@@ -29,6 +31,33 @@ def create_run_id() -> str:
     """Create a unique UTC pipeline-run identifier"""
 
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def write_json(path: str, payload: Any) -> None:
+    """Write JSON to either a local path or an S3 URI"""
+
+    body = json.dumps(
+        payload,
+        indent=2,
+        ensure_ascii=False,
+    )
+
+    if path.startswith("s3://"):
+        bucket_and_key = path.removeprefix("s3://")
+        bucket, key = bucket_and_key.split("/", 1)
+
+        s3 = boto3.client("s3")
+        s3.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=body.encode("utf-8"),
+            ContentType="application/json",
+        )
+        return
+
+    local_path = Path(path)
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    local_path.write_text(body, encoding="utf-8")
 
 
 def extract_products(settings: Settings) -> ExtractionResult:
@@ -39,11 +68,10 @@ def extract_products(settings: Settings) -> ExtractionResult:
     ingestion_date = started_at.date().isoformat()
 
     output_directory = (
-        Path(settings.bronze_root)
-        / f"ingestion_date={ingestion_date}"
-        / f"run_id={run_id}"
+        f"{settings.bronze_root.rstrip('/')}"
+        f"/ingestion_date={ingestion_date}"
+        f"/run_id={run_id}"
     )
-    output_directory.mkdir(parents=True, exist_ok=True)
 
     client = OpenFoodFactsClient(
         base_url=settings.base_url,
@@ -64,17 +92,10 @@ def extract_products(settings: Settings) -> ExtractionResult:
         if page < settings.max_pages:
             time.sleep(6)
 
-    product_path = output_directory / "products.json"
-    metadata_path = output_directory / "metadata.json"
+    product_path = f"{output_directory}/products.json"
+    metadata_path = f"{output_directory}/metadata.json"
 
-    product_path.write_text(
-        json.dumps(
-            all_products,
-            indent=2,
-            ensure_ascii=False,
-        ),
-        encoding="utf-8",
-    )
+    write_json(product_path, all_products)
 
     completed_at = datetime.now(timezone.utc)
 
@@ -91,13 +112,10 @@ def extract_products(settings: Settings) -> ExtractionResult:
             (completed_at - started_at).total_seconds(),
             2,
         ),
-        "product_path": str(product_path),
+        "product_path": product_path,
     }
 
-    metadata_path.write_text(
-        json.dumps(metadata, indent=2),
-        encoding="utf-8",
-    )
+    write_json(metadata_path, metadata)
 
     logger.info(
         "Bronze extraction complete: records=%s path=%s",
