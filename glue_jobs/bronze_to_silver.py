@@ -1,4 +1,4 @@
-_import sys
+import sys
 from datetime import datetime, timezone
 
 from awsglue.context import GlueContext
@@ -17,30 +17,29 @@ from pyspark.sql.window import Window
 
 
 # Glue passes JOB_NAME automatically
-args = getResolvedOptions(sys.argv, ["JOB_NAME"])
+args = getResolvedOptions(
+    sys.argv,
+    [
+        "JOB_NAME",
+        "bronze_path",
+        "silver_root",
+        "quarantine_root",
+        "run_id",
+    ],
+)
 
 sc = SparkContext.getOrCreate()
 glue_context = GlueContext(sc)
 spark = glue_context.spark_session
 
-spark.conf.set("spark.sql.session.timeZone", "UTC")
-spark.conf.set("spark.sql.shuffle.partitions", "4")
-
 job = Job(glue_context)
 job.init(args["JOB_NAME"], args)
 
 
-RUN_ID = "20260721T044034Z"
-
-BRONZE_PATH = (
-    "s3://foodlens-ni-2026/bronze/"
-    "ingestion_date=2026-07-21/"
-    f"run_id={RUN_ID}/"
-    "products.json"
-)
-
-SILVER_ROOT = "s3://foodlens-ni-2026/silver"
-QUARANTINE_ROOT = "s3://foodlens-ni-2026/quarantine"
+BRONZE_PATH = args["bronze_path"]
+SILVER_ROOT = args["silver_root"]
+QUARANTINE_ROOT = args["quarantine_root"]
+RUN_ID = args["run_id"]
 
 
 NUTRIMENTS_SCHEMA = StructType(
